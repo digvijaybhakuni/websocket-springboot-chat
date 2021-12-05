@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Hello WebSocket</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.5.2/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+</head>
+<body>
+
+
+<div class="main">
+
+    <div class="message">
+        <ul id="member-list"></ul>
+        <ul id="message-list"></ul>
+        <div>
+            <form action="#" onsubmit="return false;">
+                <label for="message-box">Type Here</label>
+                <input id="message-box" name="message" type="text"/>
+                <button id="send-message" type="submit">Send</button>
+            </form>
+        </div>
+    </div>
+
+</div>
+
+<script>
+
+    window.addEventListener('load', (e) => {
+        const socket = new SockJS('/chat')
+        const stompClient = Stomp.over(socket)
+        const name =  window.prompt("Please Enter Your Name ")
+        stompClient.connect({}, (frame) => {
+
+            console.log("frame", frame);
+            stompClient.subscribe('/topic/errors', (greeting) => {
+                console.warn('errors: ' + greeting.body)
+            });
+
+            stompClient.subscribe('/topic/greetings', (greeting) => {
+                console.log('greetings: ' + greeting.body);
+                const data = JSON.parse(greeting.body);
+                var memberList = document.getElementById("member-list");
+                const liElem = document.createElement("li");
+                liElem.innerText = data.message;
+                memberList.appendChild(liElem);
+            });
+
+            stompClient.subscribe('/topic/message', (response) => {
+                const body = response.body;
+                console.log("body", body);
+                const data = JSON.parse(body);
+                console.log("msg", data);
+                const messageList = document.getElementById("message-list");
+                const liElem = document.createElement("li");
+                liElem.innerText = data.message;
+                messageList.append(liElem);
+            });
+
+            stompClient.send('/app/chat', {}, JSON.stringify({name : name}))
+            //stompClient.send('/app/chat', {}, JSON.stringify({name: 'Josh'}))
+        });
+
+
+        document.getElementById("send-message").addEventListener("click", function(event){
+            event.preventDefault();
+            const messageBox = document.getElementById("message-box");
+            const message = `${name} : ${messageBox.value}`;
+            messageBox.value = '';
+            stompClient.send('/app/message', {},JSON.stringify({message : message}));
+        });
+
+    })
+    function sendMessage(e) {
+        e.preventDefault();
+        return false;
+    }
+</script>
+</body>
+</html>
